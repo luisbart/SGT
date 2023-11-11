@@ -11,10 +11,10 @@
 
 SGT_par <- function(path_dtm, shp, station, path_BestPar, ar50f, ar50w){
   #select station
-  shp <- shp[shp$STASJON_NR == station,]
+  shp <- subset(shp, STASJON_NR == "75.23.0")
   # Reproject the shapefile to the ETRS89 / UTM zone 33N CRS
   new_crs <- CRS("+proj=utm +zone=33 +datum=WGS84 +units=m +no_defs")
-  shp <- st_transform(shp, new_crs)
+  shp <- spTransform(shp, new_crs)
 
   ####Clip raster####
   # Create an empty list to store the raster objects
@@ -23,10 +23,18 @@ SGT_par <- function(path_dtm, shp, station, path_BestPar, ar50f, ar50w){
   # Loop through each raster file in the catalog, read it, clip it, and add to the list
   # Create raster catalog of all DTMs in the directory
   raster_files <- list.files(path_dtm, pattern = ".tif$", full.name=TRUE)
+
+  #loop over rasters
   for (file in raster_files) {
     raster_obj <- raster(file)
-    crop_raster <- crop(raster_obj, extent(shp))
-    cropped_list <- append(cropped_list, list(crop_raster))
+    if (!(raster_obj@extent[2] < extent(shp)[1] | raster_obj@extent[1] > extent(shp)[2] |
+          raster_obj@extent[4] < extent(shp)[3] | raster_obj@extent[3] > extent(shp)[4])) {
+      # If the extents overlap, crop the raster to the shapefile extent
+      crop_raster <- crop(raster_obj, extent(shp))
+
+      # Add the cropped raster to the list
+      cropped_list <- append(cropped_list, list(crop_raster))
+    }
   }
 
   # Merge the list of cropped rasters into a single raster
@@ -74,25 +82,26 @@ SGT_par <- function(path_dtm, shp, station, path_BestPar, ar50f, ar50w){
 
 
   ####Delete water bodies from polygons####
+  El_z <- st_as_sf(El_z)
+  El_z <- st_transform(El_z, new_crs)
   El_z2 <- st_difference(El_z, ar50w)
 
 
   ####Compute percentage of forest/wetland####
   El_z2 <- st_as_sf(El_z2)
   ar50f <- st_as_sf(ar50f)
-  new_crs <- CRS("+proj=utm +zone=33 +datum=WGS84 +units=m +no_defs")
   ar50f <- st_transform(ar50f, new_crs)
   El_z2 <- st_transform(El_z2, new_crs)
   El_z2$area <- st_area(El_z2)
-  El_z2 <- as.data.frame(El_z2)
+  #El_z2 <- as.data.frame(El_z2)
 
   # Get the intersection between ar50f and El_z2
   intersection_sf <- st_intersection(El_z2, ar50f)
-  intersection_sf <- as.data.frame(intersection_sf)
+  #intersection_sf <- as.data.frame(intersection_sf)
 
   # Calculate the area of each intersecting polygon
   intersection_sf$area2 <- st_area(intersection_sf)
-  zones_sf$vegetation <- st_area() / st_area(zones_sf) * 100
+  intersection_sf$vegetation <- intersection_sf$area2 / intersection_sf$area * 100
 
   ####Compute standard deviation of square slope per elevation area####
   # Initialize an empty vector to store the results
@@ -113,10 +122,9 @@ SGT_par <- function(path_dtm, shp, station, path_BestPar, ar50f, ar50w){
   ####Assign a0 and D. Join all results in a table####
   #Make a table with the results
   result_df <- left_join(El_z2, Std_SqS, by = "ID")
-  result_df <- left_join(result_df, intersection_sf, by = "ID")
+  result_df <- left_join(result_df, as.data.frame(intersection_sf), by = "ID")
 
   result_df[is.na(result_df)] <- 0
-  result_df <- result_df[, c("ID", "Std_SqS", "vegetation")]
 
   #Assign a0 and D values
   result_df <- result_df %>%
@@ -129,6 +137,9 @@ SGT_par <- function(path_dtm, shp, station, path_BestPar, ar50f, ar50w){
                  ifelse(Std_SqS >= 0.1, 6533,
                         ifelse(Std_SqS >= 0.05 & Std_SqS < 0.1, 8100.5, 1000000)))
     )
+
+  result_df <- as.data.frame(result_df)
+  result_df <- result_df[, c("ID", "Std_SqS", "vegetation", "a0", "D")]
   #####
   return(result_df)
 
