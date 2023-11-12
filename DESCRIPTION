@@ -4,16 +4,9 @@ Title: Spatial SWE distribution from terrain in DDD model
 Version: 0.1.0
 Author: Luis Barreiro 
 Maintainer: Luis Barreiro <joselb@uio.no> <luchobt@gmail.com>
-Description: Extract terrain features from DTM and assign gamma parameters per elevation zone (SG_T).
-    After running DDD model using terrain features, it compares the results (Q, SWE and SCA) with older method (SG_R) 
+Description: Extract terrain features from DTM and assign gamma parameters per elevation zone (SG_T). After running DDD model using terrain features, it compares the results (Q, SWE and SCA) with older method (SG_R) 
 License: -
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.2.3
-Imports: raster,
-    sp, 
-    sf,
-    terra,
-    dplyr,
-    lubridate
-    hydroGOF
+Imports: raster, sp, sf, terra, dplyr, lubridate
