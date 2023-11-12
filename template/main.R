@@ -6,6 +6,7 @@ library(sf)
 library(terra)
 library(dplyr)
 library(lubridate)
+library(hydroGOF)
 
 #library(roxygen2)
 #roxygenise()

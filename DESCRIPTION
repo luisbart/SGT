@@ -16,3 +16,4 @@ Imports: raster,
     terra,
     dplyr,
     lubridate
+    hydroGOF
